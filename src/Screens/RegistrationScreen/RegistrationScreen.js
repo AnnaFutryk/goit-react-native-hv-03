@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { object, string } from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   StyleSheet,
   ImageBackground,
@@ -10,10 +13,28 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   Keyboard,
-  Alert,
 } from "react-native";
 
+const validationSchema = object().shape({
+  login: string().required("Логін є обов'язковим полем"),
+  email: string()
+    .email("Невірний формат електронної пошти")
+    .required("Email є обов'язковим полем"),
+  password: string()
+    .min(6, "Пароль повинен містити принаймні 6 символів")
+    .required("Пароль є обов'язковим полем"),
+});
+
 export const RegistrationScreen = () => {
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
+    resolver: yupResolver(validationSchema),
+  });
+
   const [isLoginFocused, setIsLoginFocused] = useState(false);
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
@@ -22,12 +43,7 @@ export const RegistrationScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [isFormInputNotEmpty, setIsFormInputNotEmpty] = useState(false);
   const [visiblePassword, setVisiblePassword] = useState(false);
-
-  useEffect(() => {
-    setIsFormInputNotEmpty(email !== "" && password !== "");
-  }, [email, password]);
 
   const addAvatar = (e) => {
     e.preventDefault();
@@ -37,24 +53,17 @@ export const RegistrationScreen = () => {
     setVisiblePassword(!visiblePassword);
   };
 
-  const signUp = () => {
-    if (isFormInputNotEmpty) {
-      setLogin(login);
-      setEmail(email);
-      setPassword(password);
+  const onSubmit = ({ email, login, password }) => {
+    console.log({
+      Login: login,
+      Email: email,
+      Password: password,
+    });
 
-      console.log({
-        Login: login,
-        Email: email,
-        Password: password,
-      });
-
-      setLogin("");
-      setEmail("");
-      setPassword("");
-    } else {
-      Alert.alert("Будь ласка, заповніть всі поля.");
-    }
+    setLogin("");
+    setEmail("");
+    setPassword("");
+    reset();
   };
 
   return (
@@ -84,38 +93,71 @@ export const RegistrationScreen = () => {
           </View>
           <Text style={styles.registrationTitle}>Реєстрація</Text>
           <View style={styles.formWrapper}>
-            <TextInput
-              style={[styles.input, isLoginFocused && styles.inputFocused]}
-              placeholder="Логін"
-              placeholderTextColor={"#BDBDBD"}
+            {errors.login && <Text>{errors.login.message}</Text>}
+            <Controller
+              control={control}
               name="login"
-              value={login}
-              onChangeText={(value) => setLogin(value)}
-              onFocus={() => setIsLoginFocused(true)}
-              onBlur={() => setIsLoginFocused(false)}
+              render={({ field }) => (
+                <TextInput
+                  style={[styles.input, isLoginFocused && styles.inputFocused]}
+                  placeholder="Логін"
+                  placeholderTextColor={"#BDBDBD"}
+                  value={login}
+                  onChangeText={(value) => {
+                    setLogin(value);
+                    field.onChange(value);
+                  }}
+                  onFocus={() => setIsLoginFocused(true)}
+                  onBlur={() => setIsLoginFocused(false)}
+                />
+              )}
             />
-            <TextInput
-              style={[styles.input, isEmailFocused && styles.inputFocused]}
-              placeholderTextColor={"#BDBDBD"}
-              placeholder="Адреса електронної пошти"
+
+            {errors.email && <Text>{errors.email.message}</Text>}
+            <Controller
+              control={control}
               name="email"
-              value={email}
-              onChangeText={(value) => setEmail(value)}
-              onFocus={() => setIsEmailFocused(true)}
-              onBlur={() => setIsEmailFocused(false)}
+              render={({ field }) => (
+                <TextInput
+                  style={[styles.input, isEmailFocused && styles.inputFocused]}
+                  placeholder="Адреса електронної пошти"
+                  placeholderTextColor={"#BDBDBD"}
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    field.onChange(value);
+                  }}
+                  onFocus={() => setIsEmailFocused(true)}
+                  onBlur={() => setIsEmailFocused(false)}
+                />
+              )}
             />
+
             <View style={styles.lastInputWrapper}>
-              <TextInput
-                style={[styles.input, isPasswordFocused && styles.inputFocused]}
-                placeholderTextColor={"#BDBDBD"}
-                placeholder="Пароль"
+              {errors.password && <Text>{errors.password.message}</Text>}
+              <Controller
+                control={control}
                 name="password"
-                value={password}
-                secureTextEntry={!visiblePassword}
-                onChangeText={(value) => setPassword(value)}
-                onFocus={() => setIsPasswordFocused(true)}
-                onBlur={() => setIsPasswordFocused(false)}
-              ></TextInput>
+                render={({ field }) => (
+                  <TextInput
+                    style={[
+                      styles.input,
+                      isPasswordFocused && styles.inputFocused,
+                    ]}
+                    placeholderTextColor={"#BDBDBD"}
+                    placeholder="Пароль"
+                    value={password}
+                    secureTextEntry={!visiblePassword}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      field.onChange(value);
+                    }}
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={() => setIsPasswordFocused(false)}
+                  />
+                )}
+              />
+
               <TouchableOpacity
                 style={styles.showPasswordButton}
                 onPress={showPassword}
@@ -128,7 +170,10 @@ export const RegistrationScreen = () => {
           </View>
         </KeyboardAvoidingView>
         <View style={styles.BtnWrap}>
-          <TouchableOpacity style={styles.registrationButton} onPress={signUp}>
+          <TouchableOpacity
+            style={styles.registrationButton}
+            onPress={handleSubmit(onSubmit)}
+          >
             <Text style={styles.registrationButtonText}>Зареєструватися</Text>
           </TouchableOpacity>
           <TouchableOpacity>
@@ -218,6 +263,7 @@ const styles = StyleSheet.create({
   },
   lastInputWrapper: {
     position: "relative",
+    marginBottom: 16,
   },
   showPasswordText: {
     position: "absolute",
